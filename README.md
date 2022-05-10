@@ -1,1 +1,100 @@
-# airflow-slack-app
+# Airflow-slack-app
+在這裡我們依照[一段Airflow與資料工程的故事：談如何用Python追漫畫連載](https://leemeng.tw/a-story-about-airflow-and-data-engineering-using-how-to-use-python-to-catch-up-with-latest-comics-as-an-example.html#app-v2)教學，同樣實作利用Slack做訊息更新的服務並以`comic_app_v3.py`作為架構去修改，改成一個追蹤Opensea感興趣NFT地板價（Floor price）的App。
+
+我們會利用自動化網頁測試工具Selenium去搜尋特定NFT的價錢，並按照設定時間回傳至Slack的Channel中，在下面講解Chrome和Chrome driver安裝的部分可交互參照這二篇精彩的教學：
+
+1. [ChromeDriver in WSL2](https://www.gregbrisebois.com/posts/chromedriver-in-wsl2/)
+2. [Run Selenium and Chrome on WSL2 using Python and Selenium webdriver](https://cloudbytes.dev/snippets/run-selenium-and-chrome-on-wsl2)
+
+## 下載並安裝Chrome
+首先，我們先下載Linux版本的Chrome並安裝相關的函式庫：
+
+```
+sudo apt-get update
+sudo apt-get install -y curl unzip xvfb libxi6 libgconf-2-4
+```
+
+下載目前Chrome的穩定版本：
+
+```
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install ./google-chrome-stable_current_amd64.deb
+```
+
+安裝成功後可以執行以下指令確認：
+
+```
+google-chrome --version # Google Chrome 101.0.4951.54 for example
+```
+
+## 下載並安裝Chrome driver
+這裡第一種作法是直接到該[網頁](https://chromedriver.storage.googleapis.com/)中查詢對應Chrome版號的version，下載後再解壓縮：
+
+```
+sudo apt-get install unzip
+wget https://chromedriver.storage.googleapis.com/<version>/chromedriver_linux64.zip
+unzip chromedriver_linux64.zip
+```
+
+也可以自動偵測目前Chrome的版本放到`chrome_driver`變數中：
+
+```
+chrome_driver=$(curl "https://chromedriver.storage.googleapis.com/LATEST_RELEASE")
+echo "$chrome_driver"
+```
+
+再來下載相對應版號的Chrome driver後解壓縮：
+
+```
+curl -Lo chromedriver_linux64.zip "https://chromedriver.storage.googleapis.com/${chrome_driver}/chromedriver_linux64.zip"
+unzip chromedriver_linux64.zip
+```
+
+最後，我們把解壓縮後的Chrome driver移到`/usr/bin`並加入`~/.bashrc`中：
+
+```
+sudo mv -f ~/chromedriver /usr/bin
+echo 'export PATH=$PATH:/usr/bin' >> ~/.bashrc
+```
+
+完成後可以執行以下指令確認：
+
+```
+chromedriver --version
+which chromedriver # should be /usr/bin/chromedriver
+```
+
+最後，我們設定使用權限：
+
+```
+sudo chown root:root /usr/bin/chromedriver
+sudo chmod +x /usr/bin/chromedriver
+```
+
+最後，如果想要將呼叫Selenium啟動自動測試的畫面顯示出來，可以參考[ChromeDriver in WSL2](https://www.gregbrisebois.com/posts/chromedriver-in-wsl2/)建立X Server的部分，主要是用`DISPLAY`去讓GUI application知道X Server要使用哪個連接埠（Port），我們可以把它寫到`~/.bashrc`裡並做測試：
+
+```
+echo 'export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2; exit;}'):0.0' >> ~/.bashrc
+echo $DISPLAY # 172.26.144.1:0.0 for example
+```
+
+註：Windows可能要解決防火牆問題，啟動X Server時記得勾選「Disable access control」並到左下角搜尋「允許應用程式通過Windows防火牆」、勾選「VcXsrv windows xserver」即可。
+
+## 建立Selenium環境
+首先，我們需要Selenium套件去做網頁訪問，因此先執行以下指令分別安裝Selenium套件：
+
+```
+pip install selenium
+```
+
+同時，我們建立一個測`opensea_selenium.py`測試腳本確認一切準備就緒：
+
+```
+from selenium import webdriver
+
+browser = webdriver.Chrome()
+browser.get("https://opensea.io/collection/alphasharksofficial")
+print("Hello! Opensea!")
+browser.quit()
+```
+
