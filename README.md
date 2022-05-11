@@ -1,5 +1,5 @@
 # Airflow-slack-app
-在這裡我們依照[一段Airflow與資料工程的故事：談如何用Python追漫畫連載](https://leemeng.tw/a-story-about-airflow-and-data-engineering-using-how-to-use-python-to-catch-up-with-latest-comics-as-an-example.html#app-v2)教學，同樣實作利用Slack做訊息更新的服務並以`comic_app_v3.py`作為架構去修改，改成一個追蹤Opensea感興趣NFT地板價（Floor price）的App。
+在這裡我們依照[一段Airflow與資料工程的故事：談如何用Python追漫畫連載](https://leemeng.tw/a-story-about-airflow-and-data-engineering-using-how-to-use-python-to-catch-up-with-latest-comics-as-an-example.html#app-v2)教學，同樣實作利用Slack做訊息更新的服務並以`comic_app_v3.py`作為架構去修改，改成一個追蹤Opensea自己感興趣NFT地板價（Floor price）的App。
 
 我們會利用自動化網頁測試工具Selenium去搜尋特定NFT的價錢，並按照設定時間回傳至Slack的Channel中，在下面講解Chrome和Chrome driver安裝的部分可交互參照這二篇精彩的教學：
 
@@ -87,14 +87,63 @@ echo $DISPLAY # 172.26.144.1:0.0 for example
 pip install selenium
 ```
 
-同時，我們建立一個測`opensea_selenium.py`測試腳本確認一切準備就緒：
+同時，我們建立一個`opensea_selenium.py`測試腳本確認一切準備就緒：
 
 ```
 from selenium import webdriver
 
 browser = webdriver.Chrome()
 browser.get("https://opensea.io/collection/alphasharksofficial")
-print("Hello! Opensea!")
+print("Hello! Opensea!") # should be shown in terminal
 browser.quit()
 ```
 
+## Slack App設定
+
+
+
+## 修改程式碼
+依照`comic_app_v3.py`架構修改成`opensea_app_v1.py`，僅列出一些比較重要的部分：
+
+```
+nft_page_template = 'https://opensea.io/collection/{}'
+
+def process_metadata(mode, **context):
+    ...
+    metadata_path = os.path.join(file_dir, '../data/opensea.json') # 另外開一個opensea.json專門記錄nft資訊
+    ...
+
+def check_nft_info(**context):
+    ...
+    for nft_id, nft_info in dict(all_nft_info).items():
+        ...
+        floor = driver.find_elements_by_xpath( # 定位出頁面中floor price區域位置
+            "//*[@class='Blockreact__Block-sc-1xf18x6-0 Textreact__Text-sc-1w94ul3-0 cLsBvb kscHgv']"
+        )
+        latest_floor_price = floor[2].text
+        previous_floor_price = nft_info['previous_floor_price']
+        ...
+
+with DAG('opensea_app_v1', default_args=default_args) as dag:
+    ...
+    send_notification = SlackAPIPostOperator(
+        task_id='send_notification',
+        token=get_token(),
+        channel='#opensea-floor-price', # 開一個名稱為「opensea-floor-price」的Slack channel
+        text=get_message_text(),
+        icon_url='http://airbnb.io/img/projects/airflow3.png'
+    )
+    ...
+```
+
+接著，就可以把DAG的Graph中開啟看資料管線處理過程，以及觀察在各步驟成功與否：
+
+![image](https://user-images.githubusercontent.com/100120881/167760740-2aa08725-1b83-4ed0-9e4e-8290e309a4db.png)
+
+最後，右下角應該會彈出Slack通知視窗，並在Slack#opensea-floor-price中獲取最新地板價訊息：
+
+![image](https://user-images.githubusercontent.com/100120881/167761415-932c3e93-dc5c-4325-8e47-71d7edb1ef79.png)
+
+## 注意事項
+* 在Linux中若想要和Google drive作互動，可以參考[[Python] 使用 gdown 套件來下載 Google 雲端硬碟的檔案](https://clay-atlas.com/blog/2020/03/13/python-chinese-note-package-gdown-download-google-drive/)安裝函式庫`gdown`
+* 在Windows系統中也可以直接在`\\wsl$\Ubuntu-18.04`路徑找到Linux子系統的相關檔案
