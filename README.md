@@ -1,5 +1,5 @@
 # Airflow-slack-app
-在這裡我們依照[一段Airflow與資料工程的故事：談如何用Python追漫畫連載](https://leemeng.tw/a-story-about-airflow-and-data-engineering-using-how-to-use-python-to-catch-up-with-latest-comics-as-an-example.html#app-v2)教學，同樣實作利用Slack做訊息更新的服務並以`comic_app_v3.py`作為架構去修改，改成一個追蹤Opensea自己感興趣NFT地板價（Floor price）的App。
+在這裡我們依照[一段Airflow與資料工程的故事：談如何用Python追漫畫連載](https://leemeng.tw/a-story-about-airflow-and-data-engineering-using-how-to-use-python-to-catch-up-with-latest-comics-as-an-example.html#app-v2)教學，同樣實作利用Slack做訊息更新的服務並依照`comic_app_v3.py`架構修改成`opensea_app_v1.py`，改成一個追蹤Opensea自己感興趣NFT地板價（Floor price）的App。
 
 我們會利用自動化網頁測試工具Selenium去搜尋特定NFT的價錢，並按照設定時間回傳至Slack的Channel中，在下面講解Chrome和Chrome driver安裝的部分可交互參照這二篇精彩的教學：
 
@@ -99,11 +99,26 @@ browser.quit()
 ```
 
 ## Slack App設定
+到[Slack官網](https://slack.com/intl/zh-tw/help/articles/209038037-%E4%B8%8B%E8%BC%89-Slack-Windows-%E7%89%88)下載安裝後開始進行設定。我們先建立一個`airflow-test`的Workspace，並在Channels的地方增加`#opensea-floor-price`頻道。
 
+接著，我們需要在`#opensea-floor-price`頻道中加入一個機器人（Bot），利用這個Bot去把`opensea_app_v1.py`中SlackAPIPostOperator傳遞的訊息寫進頻道中。到[Slack API頁面](https://api.slack.com/apps)先`Create New App`、選擇From Scratch後輸入頻道和Workspace：
 
+![image](https://user-images.githubusercontent.com/100120881/167762978-af43e2ba-2825-4bc1-ba3e-bfabf8ce2534.png)
+
+新增完App後應該會在下方App Name看到剛剛的App，點進去後應該會看到這個App的設定頁面：
+
+![image](https://user-images.githubusercontent.com/100120881/167763774-192be817-fbed-486a-a588-7c2857583729.png)
+
+打開左側`Incoming Webhooks`、再把Activate Incoming Webhook「On」起來，Slack就會幫你建立一個Webhook URL，妳可以複製下方curl指令測試Bot是不是有正常工作：
+
+![image](https://user-images.githubusercontent.com/100120881/167764442-d4da2a7f-9c7e-4286-a5e1-2d76934211d5.png)
+
+打開左側`OAuth & Permissions`看到自動生成的OAuth Tokens for Your Workspace，把這串Token複製貼上到`data/credentials/slack.json`。最後，在Scope中新增一個OAuth Scope並把`chat:write`加入，這樣就允許我們用API去訪問並控制Slack Bot寫訊息：
+
+![image](https://user-images.githubusercontent.com/100120881/167765094-bcc55875-ad1e-4505-ae73-898bcb0a76ef.png)
 
 ## 修改程式碼
-依照`comic_app_v3.py`架構修改成`opensea_app_v1.py`，僅列出一些比較重要的部分：
+程式碼僅列出一些比較重要的修改部分：
 
 ```
 nft_page_template = 'https://opensea.io/collection/{}'
