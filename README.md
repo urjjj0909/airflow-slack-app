@@ -101,7 +101,7 @@ browser.quit()
 ## Slack App設定
 到[Slack官網](https://slack.com/intl/zh-tw/help/articles/209038037-%E4%B8%8B%E8%BC%89-Slack-Windows-%E7%89%88)下載安裝後開始進行設定。我們先建立一個`airflow-test`的Workspace，並在Channels的地方增加`#opensea-floor-price`頻道。
 
-接著，我們需要在`#opensea-floor-price`頻道中加入一個機器人（Bot），利用這個Bot去把`opensea_app_v1.py`中SlackAPIPostOperator傳遞的訊息寫進頻道中。到[Slack API頁面](https://api.slack.com/apps)先`Create New App`、選擇From Scratch後輸入頻道和Workspace：
+接著，我們需要在`#opensea-floor-price`頻道中加入一個機器人（Bot），利用這個Bot去把`opensea_app_v1.py`中SlackAPIPostOperator傳遞的訊息寫進頻道中。到[Slack API頁面](https://api.slack.com/apps)先Create New App、選擇From Scratch後輸入頻道和Workspace：
 
 ![image](https://user-images.githubusercontent.com/100120881/167762978-af43e2ba-2825-4bc1-ba3e-bfabf8ce2534.png)
 
@@ -109,7 +109,7 @@ browser.quit()
 
 ![image](https://user-images.githubusercontent.com/100120881/167763774-192be817-fbed-486a-a588-7c2857583729.png)
 
-打開左側`Incoming Webhooks`、再把Activate Incoming Webhook「On」起來，Slack就會幫你建立一個Webhook URL，妳可以複製下方curl指令測試Bot是不是有正常工作：
+打開左側`Incoming Webhooks`、再把Activate Incoming Webhook「On」起來，Slack就會幫你建立一個Webhook URL，你可以複製下方curl指令測試Bot是不是有正常工作：
 
 ![image](https://user-images.githubusercontent.com/100120881/167764442-d4da2a7f-9c7e-4286-a5e1-2d76934211d5.png)
 
