@@ -27,6 +27,13 @@ sudo apt install ./google-chrome-stable_current_amd64.deb
 google-chrome --version # Google Chrome 101.0.4951.54 for example
 ```
 
+註：若想要安裝特定版本的Chrome則執行以下指令，其中version就可以自行查詢，在這裡以101.0.4951.41-1為例：
+
+```
+wget http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_101.0.4951.41-1_amd64.deb
+sudo apt install ./google-chrome-stable_101.0.4951.41-1_amd64.deb
+```
+
 ## 下載並安裝Chrome driver
 這裡第一種作法是直接到該[網頁](https://chromedriver.storage.googleapis.com/)中查詢對應Chrome版號的version，下載後再解壓縮：
 
@@ -87,7 +94,7 @@ echo $DISPLAY # 172.26.144.1:0.0 for example
 pip install selenium
 ```
 
-同時，我們建立一個`opensea_selenium.py`測試腳本確認一切準備就緒：
+同時，我們建立一個`selenium_connect.py`測試腳本確認一切準備就緒：
 
 ```
 from selenium import webdriver
@@ -97,6 +104,8 @@ browser.get("https://opensea.io/collection/alphasharksofficial")
 print("Hello! Opensea!") # should be shown in terminal
 browser.quit()
 ```
+
+若執行成功，應該可以看到Selenium開啟一個測是自動化網頁並導向alphasharksofficial，最後在terminal當中印出`Hello! Opensea!`字樣。
 
 ## Slack App設定
 到[Slack官網](https://slack.com/intl/zh-tw/help/articles/209038037-%E4%B8%8B%E8%BC%89-Slack-Windows-%E7%89%88)下載安裝後開始進行設定。我們先建立一個`airflow-test`的Workspace，並在Channels的地方增加`#opensea-floor-price`頻道。
@@ -132,10 +141,11 @@ def check_nft_info(**context):
     ...
     for nft_id, nft_info in dict(all_nft_info).items():
         ...
-        floor = driver.find_elements_by_xpath( # 定位出頁面中floor price區域位置
-            "//*[@class='Blockreact__Block-sc-1xf18x6-0 Textreact__Text-sc-1w94ul3-0 cLsBvb kscHgv']"
+        # 尋找的元素有可能因為網站改版而遺失，在抓資料前可以先跑測試
+        floor = driver.find_elements_by_xpath(
+            "//*[@class='fresnel-container fresnel-greaterThanOrEqual-md ']"
         )
-        latest_floor_price = floor[2].text
+        latest_floor_price = floor[3].text.split('\n')[0]
         previous_floor_price = nft_info['previous_floor_price']
         ...
 
@@ -151,9 +161,18 @@ with DAG('opensea_app_v1', default_args=default_args) as dag:
     ...
 ```
 
+將程式碼改寫完畢後，必須記得跑Airflow工作前的好習慣，可以`python dags/XXX.py`確認邏輯執行正確無誤，再用`airflow tasks test ...`指令分別測試每個Airflow工作執行如預期：
+
+```
+airflow tasks test comic_app_v2 get_read_history 2022-06-12
+airflow tasks test comic_app_v2 check_nft_info 2022-06-12
+airflow tasks test comic_app_v2 new_price_available 2022-06-12
+...
+```
+
 接著，就可以把DAG的Graph中開啟看資料管線處理過程，以及觀察在各步驟成功與否：
 
-![image](https://user-images.githubusercontent.com/100120881/167760740-2aa08725-1b83-4ed0-9e4e-8290e309a4db.png)
+![image](https://user-images.githubusercontent.com/100120881/173312579-a074c803-6725-4ae6-9aec-6d038b223134.png)
 
 最後，右下角應該會彈出Slack通知視窗，並在Slack#opensea-floor-price中獲取最新地板價訊息：
 
